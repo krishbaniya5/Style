@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout - StyleJackets</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://khalti.com/static/khalti-checkout.js"></script>
+  <style>
+    #success-message {
+      display: none;
+      text-align: center;
+      margin-top: 30px;
+      padding: 20px;
+      border: 2px solid #4CAF50;
+      border-radius: 10px;
+      background: #f0fff0;
+    }
+    #success-message img {
+      width: 100px;
+      height: 100px;
+    }
+    #success-message h3 {
+      color: #4CAF50;
+      margin: 10px 0;
+    }
+    .btn {
+      margin: 10px;
+      padding: 10px 20px;
+      cursor: pointer;
+    }
+    .btn-cod {
+      background: #2196F3;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    .btn-khalti {
+      background: #6f42c1;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container nav-container">
+      <a href="index.html" class="logo">StyleJackets</a>
+    </div>
+  </nav>
+
+  <section class="container">
+    <h2>Checkout</h2>
+    <div id="order-summary">
+      <h3>Order Summary</h3>
+      <p>Product: <span id="summary-name"></span></p>
+      <p>Price: $<span id="summary-price"></span></p>
+      <p>Size: <span id="summary-size"></span></p>
+      <p>Quantity: <span id="summary-qty"></span></p>
+      <p>Total: $<span id="summary-total"></span></p>
+    </div>
+
+    <form id="checkout-form">
+      <input type="hidden" id="product-name" name="product_name">
+      <input type="hidden" id="product-price" name="product_price">
+      <input type="hidden" id="size" name="size">
+      <input type="hidden" id="quantity" name="quantity">
+      <input type="hidden" id="total" name="total">
+
+      <div class="form-group">
+        <label for="shipping-name" class="form-label">Shipping Name</label>
+        <input type="text" id="shipping-name" name="shipping_name" class="form-input" required>
+      </div>
+      <div class="form-group">
+        <label for="shipping-address" class="form-label">Shipping Address</label>
+        <textarea id="shipping-address" name="shipping_address" class="form-input" required></textarea>
+      </div>
+
+      <!-- Payment Buttons -->
+      <button type="button" class="btn btn-khalti" id="submit-btn">Pay with Khalti</button>
+      <button type="button" class="btn btn-cod" id="cod-btn">Cash on Delivery</button>
+    </form>
+
+    <div id="success-message">
+    
+      <h3>Order Placed Successfully!</h3>
+      <p>Thank you for shopping with us.</p>
+    </div>
+  </section>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    document.getElementById('summary-name').textContent = urlParams.get('name');
+    document.getElementById('summary-price').textContent = urlParams.get('price');
+    document.getElementById('summary-size').textContent = urlParams.get('size');
+    document.getElementById('summary-qty').textContent = urlParams.get('qty');
+    document.getElementById('summary-total').textContent =
+      (parseFloat(urlParams.get('price')) * parseInt(urlParams.get('qty'))).toFixed(2);
+
+    document.getElementById('product-name').value = urlParams.get('name');
+    document.getElementById('product-price').value = urlParams.get('price');
+    document.getElementById('size').value = urlParams.get('size');
+    document.getElementById('quantity').value = urlParams.get('qty');
+    document.getElementById('total').value = document.getElementById('summary-total').textContent;
+
+    // Khalti Checkout Config
+    var config = {
+      publicKey: "YOUR_KHALTI_PUBLIC_KEY",
+      productIdentity: "1234567890",
+      productName: document.getElementById('summary-name').textContent,
+      productUrl: "http://yourdomain.com/product",
+      eventHandler: {
+        onSuccess(payload) {
+          const orderData = {
+            token: payload.token,
+            amount: payload.amount,
+            product_name: document.getElementById('product-name').value,
+            product_price: document.getElementById('product-price').value,
+            size: document.getElementById('size').value,
+            quantity: document.getElementById('quantity').value,
+            total: document.getElementById('total').value,
+            shipping_name: document.getElementById('shipping-name').value,
+            shipping_address: document.getElementById('shipping-address').value
+          };
+
+          fetch("checkout_process.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(orderData)
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.status === "success") {
+              document.getElementById("checkout-form").style.display = "none";
+              document.getElementById("success-message").style.display = "block";
+            } else {
+              alert("Payment verification failed!");
+            }
+          });
+        },
+        onError(error) {
+          alert("Payment failed!");
+          console.log(error);
+        },
+        onClose() {
+          console.log("Khalti widget closed");
+        }
+      }
+    };
+
+    var checkout = new KhaltiCheckout(config);
+    document.getElementById("submit-btn").addEventListener("click", function (e) {
+      e.preventDefault();
+      let totalAmount = parseFloat(document.getElementById('summary-total').textContent) * 100;
+      checkout.show({amount: totalAmount});
+    });
+
+    // Cash on Delivery Button
+    document.getElementById("cod-btn").addEventListener("click", function () {
+      document.getElementById("checkout-form").style.display = "none";
+      document.getElementById("success-message").style.display = "block";
+    });
+  </script>
+</body>
+</html>
